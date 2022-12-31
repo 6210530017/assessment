@@ -98,3 +98,27 @@ func (h *handler) UpdateExpense(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, ex2)
 }
+
+func (h *handler) GetExpenses(c echo.Context) error {
+	stmt, err := h.DB.Prepare("SELECT * FROM expenses")
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, Err{Message: "can't prepare query expenses statement:" + err.Error()})
+	}
+
+	rows, err := stmt.Query()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, Err{Message: "can't query all expenses:" + err.Error()})
+	}
+
+	data := []Expense{}
+
+	for rows.Next() {
+		ex := Expense{}
+		err = rows.Scan(&ex.ID, &ex.Title, &ex.Amount, &ex.Note, &ex.Tags)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, Err{Message: "can't Scan row into variable:" + err.Error()})
+		}
+		data = append(data, ex)
+	}
+	return c.JSON(http.StatusOK, data)
+}
