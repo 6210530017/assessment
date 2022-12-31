@@ -56,6 +56,7 @@ func main() {
 	e.POST("/expenses", h.CreateExpense)
 	e.GET("/expenses/:id", h.GetExpense)
 	e.PUT("/expenses/:id", h.UpdateExpense)
+	e.GET("/expenses", h.GetExpenses)
 
 	go func() {
 		if err := e.Start(config.Port); err != nil && err != http.ErrServerClosed {
