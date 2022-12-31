@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
 
 	"github.com/6210530017/assessment/config"
+	"github.com/6210530017/assessment/handler"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
 
@@ -44,7 +44,7 @@ func main() {
 	db, teardown := Setup(config.DB_url)
 	defer teardown()
 
-	fmt.Printf("\n%#v\n", db)
+	h := handler.NewHandler(db)
 
 	e := echo.New()
 	e.Logger.SetLevel(log.INFO)
@@ -52,6 +52,8 @@ func main() {
 		time.Sleep(5 * time.Second)
 		return c.JSON(http.StatusOK, "OK")
 	})
+
+	e.POST("/expenses", h.CreateExpense)
 
 	go func() {
 		if err := e.Start(config.Port); err != nil && err != http.ErrServerClosed {
