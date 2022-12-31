@@ -1,0 +1,49 @@
+package handler
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"regexp"
+	"strings"
+	"testing"
+
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
+)
+
+var	testBody = `{"id":1,"title":"Board game","amount":60,"note":"Play board game with friends","tags":["Play","Social"]}`
+
+func TestCreateExpense(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPost, "/expenses", strings.NewReader(testBody))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+
+	// result := sqlmock.NewResult(1,1)
+	expenseMockRows := sqlmock.NewRows([]string{"id"}).
+		AddRow("1")
+
+	db , mock, err := sqlmock.New()
+	// // mock.ExpectExec(`INSERT INTO expenses (title, amount, note, tags) values ($1, $2, $3, $4) RETURNING id`).WillReturnResult(result)
+	// prep := mock.ExpectPrepare("^INSERT INTO expenses*")
+
+    // prep.ExpectExec().
+    //     WithArgs("Board game", 60, "Play board game with friends", `{"Play","Social"}`).
+    //     WillReturnResult(result)
+	mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO expenses (title, amount, note, tags) values ($1, $2, $3, $4)  RETURNING id`)).
+		WithArgs("Board game", 60.0, "Play board game with friends", `{Play, Social}`).
+		WillReturnRows(expenseMockRows)
+
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+
+	h := handler{db}
+	c := e.NewContext(req, rec)
+
+	if assert.NoError(t, h.CreateExpense(c)) {
+		assert.Equal(t, http.StatusCreated, rec.Code)
+		assert.Equal(t, testBody, strings.TrimSpace(rec.Body.String()))
+	}
+}
