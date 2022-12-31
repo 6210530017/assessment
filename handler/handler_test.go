@@ -47,3 +47,32 @@ func TestCreateExpense(t *testing.T) {
 		assert.Equal(t, testBody, strings.TrimSpace(rec.Body.String()))
 	}
 }
+
+func TestGetExpense(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/expenses", strings.NewReader(""))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+
+	expenseMockRows := sqlmock.NewRows([]string{"id", "title", "amount", "note", "tags"}).
+		AddRow("1", "Board game", 60, "Play board game with friends", `{Play,Social}`)
+
+	db, mock, err := sqlmock.New()
+	mock.ExpectPrepare(regexp.QuoteMeta(`SELECT id, title, amount, note, tags FROM expenses WHERE id = $1`)).
+		ExpectQuery().
+		WithArgs("1").
+		WillReturnRows(expenseMockRows)
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	h := handler{db}
+	c := e.NewContext(req, rec)
+	c.SetPath("/expenses/:id")
+	c.SetParamNames("id")
+	c.SetParamValues("1")
+
+	if assert.NoError(t, h.GetExpense(c)) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, testBody, strings.TrimSpace(rec.Body.String()))
+	}
+}
