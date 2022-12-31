@@ -2,6 +2,7 @@ package handler
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -21,15 +22,27 @@ func NewHandler(db *sql.DB) *handler {
 }
 
 type Expense struct {
-	ID     int      `json:"id"`
-	Title  string   `json:"title"`
-	Amount float64  `json:"amount"`
-	Note   string   `json:"note"`
+	ID     int            `json:"id"`
+	Title  string         `json:"title"`
+	Amount float64        `json:"amount"`
+	Note   string         `json:"note"`
 	Tags   pq.StringArray `json:"tags"`
 }
 
 type Err struct {
 	Message string `json:"message"`
+}
+
+func (h *handler) AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		Authorization := c.Request().Header.Get("Authorization")
+		if Authorization != "November 10, 2009" {
+			c.JSON(http.StatusUnauthorized, Err{Message: "Unauthorized!"})
+			return errors.New("")
+		}
+		next(c)
+		return nil
+	}
 }
 
 func (h *handler) CreateExpense(c echo.Context) error {

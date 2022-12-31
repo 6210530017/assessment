@@ -48,6 +48,7 @@ func main() {
 
 	e := echo.New()
 	e.Logger.SetLevel(log.INFO)
+	e.Use(h.AuthMiddleware)
 	e.GET("/", func(c echo.Context) error {
 		time.Sleep(5 * time.Second)
 		return c.JSON(http.StatusOK, "OK")
