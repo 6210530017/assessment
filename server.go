@@ -1,11 +1,17 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"time"
 
 	"github.com/6210530017/assessment/config"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/gommon/log"
 
 	_ "github.com/lib/pq"
 )
@@ -38,5 +44,27 @@ func main() {
 	db, teardown := Setup(config.DB_url)
 	defer teardown()
 
-	fmt.Printf("%#v", db)
+	fmt.Printf("\n%#v\n", db)
+
+	e := echo.New()
+	e.Logger.SetLevel(log.INFO)
+	e.GET("/", func(c echo.Context) error {
+		time.Sleep(5 * time.Second)
+		return c.JSON(http.StatusOK, "OK")
+	})
+
+	go func() {
+		if err := e.Start(config.Port); err != nil && err != http.ErrServerClosed {
+			e.Logger.Fatal("shutting down the server")
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := e.Shutdown(ctx); err != nil {
+		e.Logger.Fatal(err)
+	}
 }
