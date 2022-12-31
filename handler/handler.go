@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/lib/pq"
@@ -67,4 +68,33 @@ func (h *handler) GetExpense(c echo.Context) error {
 	default:
 		return c.JSON(http.StatusInternalServerError, Err{Message: "can't scan expense:" + err.Error()})
 	}
+}
+
+func (h *handler) UpdateExpense(c echo.Context) error {
+	id := c.Param("id")
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, Err{Message: err.Error()})
+	}
+	ex := Expense{ID: idInt}
+	if err := c.Bind(&ex); err != nil {
+		return c.JSON(http.StatusBadRequest, Err{Message: err.Error()})
+	}
+
+	tag := fmt.Sprintf("{%v}", strings.Join(ex.Tags, ", "))
+
+	stmt, err := h.DB.Prepare("UPDATE expenses SET title=$2, amount=$3, note=$4, tags=$5 WHERE id=$1 RETURNING id, title, amount, note, tags;")
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, Err{Message: err.Error()})
+	}
+	row := stmt.QueryRow(id, ex.Title, ex.Amount, ex.Note, tag)
+
+	ex2 := Expense{}
+	err = row.Scan(&ex2.ID, &ex2.Title, &ex2.Amount, &ex2.Note, &ex2.Tags)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, Err{Message: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, ex2)
 }
